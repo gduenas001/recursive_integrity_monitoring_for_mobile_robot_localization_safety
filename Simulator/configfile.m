@@ -45,6 +45,7 @@ PARAMS.R= [PARAMS.sigmaR^2 0; 0 PARAMS.sigmaB^2];
 
 
 %% Integrity 
+PARAMS.M= 5; % epochs
 PARAMS.I_REQ= 1e-5; % Integrity risk requirement
 PARAMS.I_T= 0.001; % set threshold for the local NN
 PARAMS.I_FOV= 1e-9;
@@ -52,10 +53,9 @@ PARAMS.alert_limit= 1;
 PARAMS.T2= chi2inv(1-PARAMS.I_T,PARAMS.m_F); % threshold for the local NN
 PARAMS.P_IA_max= PARAMS.I_FOV*4; % for the landmark selection
 PARAMS.C_REQ= 1e-5; % continuity risk allocation
-PARAMS.M= 3; % epochs
 PARAMS.P_UA= 10^-3; % assuming that it is constant for the whole landmarks.
 PARAMS.P_ME= 0; % Misdetection probability
-PARAMS.P_CA= 1; % Prior correct association probability
+
 
 % switches
 SWITCH.control_noise= 1; % if 0, velocity and gamma are perfect
@@ -83,7 +83,7 @@ PARAMS.ftag= 1:size(LM,2);     % identifier for each landmark
 da_table= zeros(1,size(LM,2)); % data association table 
 
 % more initializations
-epoch= 0; IA= 0;
+IA= 0;
 DATA.epsXX= zeros(5000,3);
 DATA.stdXX= zeros(5000,3);
 DATA.eps= zeros(5000,1);
@@ -110,7 +110,6 @@ DATA.lambda2_current= zeros(5000,1);
 %% Initializations of preceding horizon stored matrices
 n_L= size(LM,2); % Number of landmarks
 M= PARAMS.M;
-P_CA= 1; % Prior probability of correct association
 nL_M= (PARAMS.M+1)*n_L*PARAMS.m_F; % total number of measurement in the PH
 
 % Innovation vector over the horizon
@@ -125,6 +124,7 @@ H_M= ones( nL_M, PARAMS.m ) *inf;
 L_M= ones( (PARAMS.M)*PARAMS.m, n_L*PARAMS.m_F ) *inf;
 L_p_M= ones( (PARAMS.M)*PARAMS.m,PARAMS.m ) *inf;
 L_pp_M= ones( (PARAMS.M)*PARAMS.m,PARAMS.m ) *inf;
-
+% Initialize A_k as empty
+A_k= [];
 
 

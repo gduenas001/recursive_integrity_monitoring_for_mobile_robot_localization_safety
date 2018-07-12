@@ -3,7 +3,6 @@ dbclear if error
 
 clear; close all; configfile;
 
-
 h= setup_animations();
 
 
@@ -12,7 +11,7 @@ for epoch= 2:PARAMS.numEpochs
     disp(['Step: ',num2str(epoch)]);
     
     %% Growing PH --> store matrices until full-size
-    if epoch <= PARAMS.M+1 
+    if epoch <= PARAMS.M + 1
         % Compute controls
         [G,iwp]= compute_steering(xtrue, iwp, G); G= -deg2rad(3);
         
@@ -79,7 +78,7 @@ for epoch= 2:PARAMS.numEpochs
         Phi_M(1:PARAMS.m,:)= Phi_k;
         
         % Integrity Monitoring
-        [P_HMI_worst,H_M,L_M,L_pp_M,Y_M]= IM (Phi_M ,H_M ,L_M ,L_pp_M ,[] ,Y_M , alpha);
+        [P_HMI_worst,H_M,L_M,L_pp_M,Y_M,A_k]= IM (Phi_M ,H_M ,L_M ,L_pp_M , A_k ,Y_M , alpha);
         
         % Get measurements
         [z,idft]= get_observations(xtrue);

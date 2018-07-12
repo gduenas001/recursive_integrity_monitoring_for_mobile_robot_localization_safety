@@ -1,4 +1,4 @@
-function [P_HMI,H_M,L_M,L_pp_M,Y_M]= IM (Phi_M ,H_M ,L_M ,L_pp_M ,A_k ,Y_M , alpha)
+function [P_HMI,H_M,L_M,L_pp_M,Y_M,A_k]= IM (Phi_M ,H_M ,L_M ,L_pp_M ,A_k ,Y_M , alpha)
 
 % PX : states prediction covarience matrix
 % Phi_M : state tranision matrix over the horizon, including the current (concatenated)
@@ -22,7 +22,7 @@ nL_M= n_L*(M+1);
 n_H=  nL_M + 1; % number of hypotheses
 
 % TODO this depends on the miss-association probability
-P_H= 1e-3;
+P_H= 1e-2;
 
 
 
@@ -55,9 +55,13 @@ L_M= [L_k;L_M];
 L_pp_M= [Lk_pp; L_pp_M];
 H_M= [H_k; H_M];
 
-if isempty(A_k)
+if 0 %~isempty(A_k) % Create A_k^M for the first time (later it will be done recursively)
+    A_k= [L_k, Lk_pp*A_k];
+    A_k(:,end-m-n+1:end-m)= [];
+    A_k(:,end-m+1:end)= A_k(:,end-m+1:end) / L_pp_M(end-m+1:end,:);
+    %   A_k= [L_k, Lk_pp * A_k(:,1:n*M), Lk_pp * A_k(:,end-m+1:end) / L_pp_M(end-m+1:end,:)];
     
-    % Create A_k^M for the first time (later it will be done recursively)
+else % The previous A_(k-1) is an input to the function -> A_k is computed recursively
     A_k= inf* ones( m, n_M + m );
     A_k(: , 1:n)= L_k;
     for i= 1:M
@@ -69,11 +73,6 @@ if isempty(A_k)
         A_k(:, n*i + 1 : n*(i+1) )= Dummy_Variable * L_M( i*m+1 : (i+1)*m, : );
     end
     A_k( :,n_M+1 : end )= Dummy_Variable * L_pp_M( M*m + 1 : (M+1)*m, : );    
-    
-else % The previous A_(k-1) is an input to the function -> A_k is computed recursively
-    
-    % Calculating A_k recursively
-    A_k= [L_k, Lk_pp * A_k(:,1:n*M), Lk_pp * A_k(:,end-m+1:end) / L_pp_M(:,end-m+1:end)];
 end
 
 % Augmented B
