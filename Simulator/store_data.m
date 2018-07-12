@@ -1,4 +1,4 @@
-function store_data (step, P_HMI_noMA_UA, P_MA_k, xtrue, q_D, T_D)
+function store_data (step, P_HMI_noMA_UA, xtrue, q_D, T_D)
 
 global DATA XX PX
 

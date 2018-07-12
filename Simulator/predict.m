@@ -21,7 +21,7 @@ c= cos(Gn + xx(3));
 vts= Vn*PARAMS.dt*s; 
 vtc= Vn*PARAMS.dt*c;
 
-alpha=[sin(xx(3));-cos(xx(3));0];
+alpha= [-sin(xx(3));cos(xx(3));0];
 
 % Predict state
 xx= [xx(1) + vtc;

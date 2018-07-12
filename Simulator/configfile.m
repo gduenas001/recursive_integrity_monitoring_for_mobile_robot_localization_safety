@@ -52,7 +52,7 @@ PARAMS.alert_limit= 1;
 PARAMS.T2= chi2inv(1-PARAMS.I_T,PARAMS.m_F); % threshold for the local NN
 PARAMS.P_IA_max= PARAMS.I_FOV*4; % for the landmark selection
 PARAMS.C_REQ= 1e-5; % continuity risk allocation
-PARAMS.Preceding_Horizon= 1; % epochs
+PARAMS.M= 2; % epochs
 PARAMS.P_UA= 10^-3; % assuming that it is constant for the whole landmarks.
 PARAMS.P_ME= 0; % Misdetection probability
 PARAMS.P_CA= 1; % Prior correct association probability
@@ -106,6 +106,25 @@ DATA.T_D= zeros(5000,1);
 DATA.q_D= zeros(5000,1);
 DATA.lambda2= zeros(5000,1);
 DATA.lambda2_current= zeros(5000,1);
+
+%% Initializations of preceding horizon stored matrices
+n_L= size(LM,2); % Number of landmarks
+M= PARAMS.M;
+P_CA= 1; % Prior probability of correct association
+nL_M= (PARAMS.M+1)*n_L*PARAMS.m_F; % total number of measurement in the PH
+
+% Innovation vector over the horizon
+gamma_M= ones( nL_M, 1 ) *inf;
+% Innovation vector covarience matrix over the horizon
+Y_M= zeros(nL_M);
+% State transition matrix over the horizon
+Phi_M= ones( (PARAMS.M+1)*PARAMS.m,PARAMS.m ) *inf;
+% Measurement Jacobian matrix over the horizon
+H_M= ones( nL_M, PARAMS.m ) *inf;
+% Kalman gain matrix over the horizon
+L_M= ones( (PARAMS.M)*PARAMS.m, n_L*PARAMS.m_F ) *inf;
+L_p_M= ones( (PARAMS.M)*PARAMS.m,PARAMS.m ) *inf;
+L_pp_M= ones( (PARAMS.M)*PARAMS.m,PARAMS.m ) *inf;
 
 
 

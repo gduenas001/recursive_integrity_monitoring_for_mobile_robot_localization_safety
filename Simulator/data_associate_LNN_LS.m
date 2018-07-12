@@ -1,5 +1,9 @@
 
 function [idf,Nza]= data_associate_LNN_LS (z)
+% idf: row vector with the landmark association of each extracted feature
+% in z
+% Nza: number of associated features (the ones with a nonzero association)
+
 
 global XX LM hlm Hlm PARAMS
 
@@ -15,9 +19,7 @@ Hlm= cell(n_L,1);
 
 % % Get all visible landmarks, assuming no mis-extractions here
 % lm_ind= get_visible_landmarks(XX,PARAMS.maxRange+EFOV, 0);
-
-% Assuming infinte range for LIDAR
-lm_ind=PARAMS.ftag(1:size(LM,2));
+lm_ind=PARAMS.ftag(1:size(LM,2)); % Assuming infinte range for LIDAR
 
 % Create the nis table
 IIN2_star= ones(1,Nz)*PARAMS.T2;
@@ -36,7 +38,7 @@ for i= 1:Nz
     end
 end
 
-Nza= nnz(idf);
+Nza= nnz(idf); 
 
 
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 
@@ -44,8 +46,6 @@ function [IIN2]= lm_model_and_IIVN2(z,R,lm_id)
 % return normalised innovation squared (ie, Mahalanobis distance)
 
 global XX PX LM hlm Hlm
-
-
 
 % auxiliary values
 dx= LM(1,lm_id) - XX(1); 
