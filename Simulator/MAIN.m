@@ -79,8 +79,7 @@ for epoch= 2:PARAMS.numEpochs
         Phi_M(1:PARAMS.m,:)= Phi_k;
         
         % Integrity Monitoring
-        [P_HMI_H,P_HMI_worst,F_mag,Fault_slope,H_M,L_M,L_pp_M,Y_M]= integrity_monitoring_fault...
-            (Phi_M ,H_M ,L_M ,L_pp_M ,[] ,Y_M , alpha);
+        [P_HMI_worst,H_M,L_M,L_pp_M,Y_M]= IM (Phi_M ,H_M ,L_M ,L_pp_M ,[] ,Y_M , alpha);
         
         % Get measurements
         [z,idft]= get_observations(xtrue);

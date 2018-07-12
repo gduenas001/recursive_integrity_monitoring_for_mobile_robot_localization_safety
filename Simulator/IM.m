@@ -1,17 +1,15 @@
-function [P_HMI_H,P_HMI,Fault_mag,Fault_dir,H_M,L_M,L_pp_M,Y_M]=...
-    integrity_monitoring_fault (Phi_M ,H_M ,L_M ,L_pp_M ,A_k ,Y_M , alpha)
+function [P_HMI,H_M,L_M,L_pp_M,Y_M]= IM (Phi_M ,H_M ,L_M ,L_pp_M ,A_k ,Y_M , alpha)
 
 % PX : states prediction covarience matrix
 % Phi_M : state tranision matrix over the horizon, including the current (concatenated)
 % H_M : observation matrix over the horizon, excluding the current (concatenated)
 % L_M : Kalman gain over the horizon, excluding the current (concatenated)
-% L_p_M : L_prime over the horizon, excluding the current (concatenated)
 % L_pp_M : L_prime_prime over the horizon, excluding the current (concatenated)
-% A_k : () current
+% A_k : previous A_k for recursive computations
 % Y_M : Innovation vector covarience matrix during the horizon
 
 global PX PARAMS
-syms Fault_magnitude
+
 
 % For a cleaner notation
 m= PARAMS.m;
@@ -21,6 +19,7 @@ m_F= PARAMS.m_F;
 n= n_L*m_F;
 n_M= n*(M+1); % measurments in the PH
 nL_M= n_L*(M+1);
+n_H=  nL_M + 1; % number of hypotheses
 
 % TODO this depends on the miss-association probability
 P_H= 1e-3;
@@ -96,73 +95,41 @@ H_M= H_M(1:end-(n),:);
 L_M= L_M(1:end-m,:);
 L_pp_M= L_pp_M(1:end-m,:);
 
-
-% Initialization of fault slope for every hypothesis (concatenated)
-% Organization:
-% (only previous state faults ;;
-% both previous state faults, and the whole combination of single measurement faults
-
-n_H=  nL_M + 1;
-Fault_dir= inf* ones( (n_M+m) * n_H, 1 );
-Fault_mag= inf* ones( n_H, 1 );
-
 % Detector threshold including the PH
 T_D= chi2inv(1 - PARAMS.C_REQ, n_M);
 
-% Initialization of P(HMI | H)
-P_HMI_H= inf* ones( n_H, 1 );
 
-%% Fault-free case done separately
+%% Loop over hypotheses in the PH (only 1 fault)
 
-% E matrix for only previous state faults
-E= zeros( m, n_M+m );
-E(:, end-m+1:end)= eye(m);
-
-Fault_dir( 1 : n_M+m )= E' /(E*M_k*E') * E * A_k' * alpha;
-Fault_dir( 1 : n_M+m )= Fault_dir( 1 : n_M+m ) / norm( Fault_dir( 1 : n_M+m ) );
-
-
-sigma2_hat= alpha'*P_Hat*alpha;
-fx_hat_dir= alpha'*A_k*Fault_dir( 1 : n_M+m );
-M_dir= Fault_dir( 1 : n_M+m )' * M_k * Fault_dir( 1 : n_M+m );
-[Fault_mag(1), P_HMI_H(1)]= fminbnd( @(Fault_magnitude)...
-    -( (1-cdf('Normal',PARAMS.alert_limit, Fault_magnitude*fx_hat_dir, sigma2_hat) +...
-    cdf('Normal',-PARAMS.alert_limit,Fault_magnitude* fx_hat_dir, sigma2_hat)) *...
-    cdf('Noncentral Chi-square', T_D, n_M, Fault_magnitude^2* M_dir) ), -10, 10);
-P_HMI_H(1)= -P_HMI_H(1);
-
-% Initialize integrity
-P_HMI= P_HMI_H(1) * P_H;
-
-%% Loop over hypotheses with faulted measurements in the PH (only 1 fault)
-for i= 1:nL_M 
+P_HMI= 0;
+for i= 1:nL_M + 1
     
-    
-    % E matrix
-    E= zeros( m + m_F , n_M + m );
-    E( end-m+1 : end , end-m+1:end )= eye(m); % previous bias
-    E( 1:m_F , (i-1)*m_F+1 : i*m_F )= eye(m_F); % landmark i faulted
+    if i == 1 % E matrix for only previous state faults
+        E= zeros( m, n_M+m );
+        E(:, end-m+1:end)= eye(m);
+    else % E matrix with faults in the PH
+        E= zeros( m + m_F , n_M + m );
+        E( end-m+1 : end , end-m+1:end )= eye(m); % previous bias
+        E( 1:m_F , (i-2)*m_F+1 : (i-1)*m_F )= eye(m_F); % landmark i faulted 
+    end
     
     % Worst-case fault direction
-    Fault_dir( (n_M+m)*i+1 : (i+1)*(n_M+m) )= E' / (E*M_k*E') * E * A_k' * alpha;
-    Fault_dir( (n_M+m)*i+1 : (i+1)*(n_M+m) )= ...
-        Fault_dir( (n_M+m)*i+1 : (i+1)*(n_M+m) ) /norm( (n_M+m)*i+1 : (i+1)*(n_M+m) );
-    
+    f_M_dir= E' / (E*M_k*E') * E * A_k' * alpha;
+    f_M_dir= f_M_dir / norm(f_M_dir);
+
     % worst-case fault magnitude
     sigma2_hat= alpha'*P_Hat*alpha;
-    fx_hat_dir= alpha'*A_k*Fault_dir( (n_M+m)*i+1 : (i+1)*(n_M+m) );
-    M_dir= Fault_dir( (n_M+m)*i+1 : (i+1)*(n_M+m) )'*M_k*Fault_dir((n_M+m)*i+1 : (i+1)*(n_M+m));
+    fx_hat_dir= alpha' * A_k * f_M_dir;
+    M_dir= f_M_dir' * M_k * f_M_dir;
 
-    [Fault_mag(i+1), P_HMI_H(i+1)]= fminbnd( @(Fault_magnitude)...
-        -((1-cdf('Normal',PARAMS.alert_limit, Fault_magnitude*...
-        fx_hat_dir, sigma2_hat)+...
-        cdf('Normal',-PARAMS.alert_limit,Fault_magnitude * fx_hat_dir, sigma2_hat))...
-        * cdf('Noncentral Chi-square',T_D,m_F*nL_M,...
-        Fault_magnitude^2 * M_dir )), -10, 10);
-    P_HMI_H(i+1)= -P_HMI_H(i+1);
+    [~, P_HMI_H]= fminbnd( @(f_M_mag)...
+        -((1-cdf('Normal',PARAMS.alert_limit, f_M_mag * fx_hat_dir, sigma2_hat)+...
+        cdf('Normal',-PARAMS.alert_limit,f_M_mag * fx_hat_dir, sigma2_hat))...
+        * cdf('Noncentral Chi-square',T_D,m_F*nL_M, f_M_mag^2 * M_dir )), -10, 10);
+    P_HMI_H= -P_HMI_H;
     
     % Add P(HMI | H) to the integrity risk
-    P_HMI= P_HMI + P_HMI_H(i+1) * P_H;
+    P_HMI= P_HMI + P_HMI_H * P_H;
 end
 
 
