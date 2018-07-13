@@ -1,4 +1,4 @@
-function [q_D, T_D, gamma,gamma_M]= EKF_update(z, idf, step,gamma_M,Y_M)
+function [q_D, T_D, gamma_M]= EKF_update(z, idf, step,gamma_M,Y_M)
 
 global XX PX PARAMS hlm Hlm DATA
 

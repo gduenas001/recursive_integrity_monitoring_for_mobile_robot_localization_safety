@@ -1,4 +1,4 @@
-function [q_D,T_D,gamma] = EKF_update_shrinking_horizon(z, idf, step)
+function [q_D,T_D,H,L,Y,gamma] = EKF_update_shrinking_horizon(z, idf, step)
 
 global XX PX PARAMS hlm Hlm DATA
 

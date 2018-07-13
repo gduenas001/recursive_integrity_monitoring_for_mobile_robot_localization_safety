@@ -16,23 +16,7 @@ for epoch= 2:PARAMS.numEpochs
         [G,iwp]= compute_steering(xtrue, iwp, G); G= -deg2rad(3);
         
         % EKF predict step
-        [xtrue,XX,PX,Phi_k,alpha]= predict (xtrue,XX,PX,G); % Gx is the current state transition matrix
-        
-        h_k= zeros(n_L*PARAMS.m_F, 1); % Expected measurement
-        H_k= zeros(n_L*PARAMS.m_F, PARAMS.m); % Observation matrix at the current time step
-        
-        for t= 1:n_L
-            [h_t,H_t]= compute_lm_model( LM(:,t) );
-            idx= ( (t-1)*PARAMS.m_F ) + 1 : t*PARAMS.m_F;
-            H_k( idx , : )= H_t;
-            h_k( idx , : )= h_t;
-        end
-        
-        V= kron(eye(n_L),PARAMS.R);  % current measurements covarience matrix
-        Y_k= H_k * PX * H_k' + V;    % Current innovation covarience matrix
-        Lk= PX * H_k' / Y_k;         % Kalman gain
-        Lk_pp= Phi_k - Lk*H_k*Phi_k; % Kalman gain prime-prime
-        
+        [xtrue,XX,PX,Phi_k,alpha]= predict (xtrue,XX,PX,G); 
         
         % Get measurements
         [z,idft]= get_observations(xtrue);
@@ -44,27 +28,41 @@ for epoch= 2:PARAMS.numEpochs
         % Store associations data
         DATA.IA(epoch)= any( (idft - idf).*idf );
         
-        
-        [q_D,T_D,gamma] = EKF_update_shrinking_horizon(z, idf, epoch);
+        % EKF update while the PH is increasing
+        [q_D,T_D,Hk,Lk,Y_k,gamma] = EKF_update_shrinking_horizon(z, idf, epoch);
+        Lk_pp= Phi_k - Lk*Hk*Phi_k; % Kalman gain prime-prime
         
         % Store DATA
         store_data(epoch, 0, xtrue, q_D, T_D);
         
-        % Plots
-%         do_plots(xtrue, z, h, epoch);
-        
-        % Update horizon matrices
+        % Increase preceding horizon
         idx= (PARAMS.M+1-epoch)*n_L*PARAMS.m_F+1 : (PARAMS.M+2-epoch)*n_L*PARAMS.m_F;
         Y_M( idx, idx)= Y_k;
         gamma_M( idx, :)= gamma;
-        H_M( idx, :)= H_k;
         
         idx= (PARAMS.M-epoch+1)*PARAMS.m+1:(PARAMS.M-epoch+2)*PARAMS.m;
         Phi_M(  idx, :)= Phi_k;
-        L_M(    idx, :)= Lk;
-        L_pp_M( idx, :)= Lk_pp;
-    
         
+        % Increase preceding horizon -- Using Cells
+        if length(L_M_cell) == PARAMS.M + 1
+            L_M_cell(end)= [];
+        end
+        L_M_cell= [ {Lk} ,L_M_cell];
+        
+        if length(Lpp_M_cell) == PARAMS.M + 1
+            Lpp_M_cell(end)= [];
+        end
+        Lpp_M_cell= [ {Lk_pp} ,Lpp_M_cell];
+        
+        if length(H_M_cell) == PARAMS.M + 1
+            H_M_cell(end)= [];
+        end
+        H_M_cell= [ {Hk}, H_M_cell];
+        
+        
+        % Plots
+%         do_plots(xtrue, z, h, epoch);
+
     %% Full-size PH --> start integrity monitoring
     else 
         % Compute controls
@@ -78,13 +76,14 @@ for epoch= 2:PARAMS.numEpochs
         Phi_M(1:PARAMS.m,:)= Phi_k;
         
         % Integrity Monitoring
-        [P_HMI_worst,H_M,L_M,L_pp_M,Y_M,A_k]= IM (Phi_M ,H_M ,L_M ,L_pp_M , A_k ,Y_M , alpha);
+        [P_HMI_worst, H_M_cell, Y_M, A_k, L_M_cell, Lpp_M_cell]=...
+            IM (Phi_M , H_M_cell, A_k ,Y_M , alpha, L_M_cell, Lpp_M_cell);
         
         % Get measurements
         [z,idft]= get_observations(xtrue);
         z= add_observation_noise(z);
         
-        % DA
+        % Data Association
         if  ~isempty(z)
             [idf,DATA.numAssoc(epoch)]= data_associate_LNN_LS(z);
             
@@ -96,7 +95,8 @@ for epoch= 2:PARAMS.numEpochs
             DATA.IA(epoch)= 0;
         end
         
-        [q_D, T_D, gamma,gamma_M]= EKF_update(z, idf, epoch,gamma_M,Y_M);
+        % EKF update
+        [q_D, T_D, gamma_M]= EKF_update(z, idf, epoch,gamma_M,Y_M);
         
         % Store DATA
         store_data(epoch, P_HMI_worst, xtrue, q_D, T_D);

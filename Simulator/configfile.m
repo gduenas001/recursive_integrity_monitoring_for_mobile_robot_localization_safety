@@ -11,7 +11,7 @@ global XX PX BIAS LM POSES  DATA PARAMS SWITCH IA
 create_path_and_map();
 
 % Number of time epochs to run the simulation
-PARAMS.numEpochs= 400;
+PARAMS.numEpochs= 100;
 
 %% Controls
 PARAMS.dt= 0.1;
@@ -45,7 +45,7 @@ PARAMS.R= [PARAMS.sigmaR^2 0; 0 PARAMS.sigmaB^2];
 
 
 %% Integrity 
-PARAMS.M= 5; % epochs
+PARAMS.M= 2; % epochs
 PARAMS.I_REQ= 1e-5; % Integrity risk requirement
 PARAMS.I_T= 0.001; % set threshold for the local NN
 PARAMS.I_FOV= 1e-9;
@@ -108,23 +108,19 @@ DATA.lambda2= zeros(5000,1);
 DATA.lambda2_current= zeros(5000,1);
 
 %% Initializations of preceding horizon stored matrices
-n_L= size(LM,2); % Number of landmarks
-M= PARAMS.M;
+A_k= []; % Initialize A_k as empty
+
+n_L= size(LM,2); % Number of landmarks at k
 nL_M= (PARAMS.M+1)*n_L*PARAMS.m_F; % total number of measurement in the PH
 
-% Innovation vector over the horizon
-gamma_M= ones( nL_M, 1 ) *inf;
-% Innovation vector covarience matrix over the horizon
-Y_M= zeros(nL_M);
-% State transition matrix over the horizon
-Phi_M= ones( (PARAMS.M+1)*PARAMS.m,PARAMS.m ) *inf;
-% Measurement Jacobian matrix over the horizon
-H_M= ones( nL_M, PARAMS.m ) *inf;
-% Kalman gain matrix over the horizon
-L_M= ones( (PARAMS.M)*PARAMS.m, n_L*PARAMS.m_F ) *inf;
-L_p_M= ones( (PARAMS.M)*PARAMS.m,PARAMS.m ) *inf;
-L_pp_M= ones( (PARAMS.M)*PARAMS.m,PARAMS.m ) *inf;
-% Initialize A_k as empty
-A_k= [];
+gamma_M= ones( nL_M, 1 ) *inf; % Innovation vectors
+Y_M= zeros(nL_M); % Innovation vectors covariances
+Phi_M= ones( (PARAMS.M+1)*PARAMS.m, PARAMS.m ) *inf; % State transition matrices
+
+
+%% Initializations of preceding horizon stored matrices
+L_M_cell= [];
+Lpp_M_cell= [];
+H_M_cell= [];
 
 

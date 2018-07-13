@@ -1,4 +1,5 @@
-function [P_HMI,H_M,L_M,L_pp_M,Y_M,A_k]= IM (Phi_M ,H_M ,L_M ,L_pp_M ,A_k ,Y_M , alpha)
+function [P_HMI, H_M_cell, Y_M, A_k, L_M_cell, Lpp_M_cell]=...
+    IM (Phi_M , H_M_cell, A_k ,Y_M , alpha, L_M_cell, Lpp_M_cell)
 
 % PX : states prediction covarience matrix
 % Phi_M : state tranision matrix over the horizon, including the current (concatenated)
@@ -24,84 +25,81 @@ n_H=  nL_M + 1; % number of hypotheses
 % TODO this depends on the miss-association probability
 P_H= 1e-2;
 
-
-
 % Initializa variables for current time
-H_k= zeros(n, m); % Observation matrix at the current time step
+Hk= zeros(n, m); % Observation matrix at the current time step
 h_k= zeros(n, 1); % Expected measurement
 
 % models for the current time
 for t= 1:n_L
     idx= ((t-1)*m_F)+1:t*m_F;
     [h_t,H_t]= compute_lm_model(lm(:,t));
-    H_k( idx,:)= H_t;
+    Hk( idx,:)= H_t;
     h_k( idx,:)= h_t;
 end
 
 V= kron(eye(n_L),PARAMS.R); % current measurements covarience matrix
-Y_k= H_k*PX*H_k' + V; % Current innovations covarience matrix
+Y_k= Hk*PX*Hk' + V; % Current innovations covarience matrix
 
 % Update the innovation vector covarience matrix for the new PH
 Y_M(n+1:end,n+1:end)= Y_M(1:end-n,1:end-n);
 Y_M(1:n,1:n)= Y_k;
 
 
-L_k= PX * H_k' / Y_k;
-P_Hat= PX - L_k*H_k*PX;
-Lk_pp= Phi_M(1:m,1:m) - L_k*H_k* Phi_M(1:m,1:m); % Kalman Gain prime-prime 
+Lk= PX * Hk' / Y_k;
+P_Hat= PX - Lk*Hk*PX;
+Lk_pp= Phi_M(1:m,1:m) - Lk*Hk* Phi_M(1:m,1:m); % Kalman Gain prime-prime 
 
-% Update the horizon increasing the size (TODO: not change sizes)
-L_M= [L_k;L_M];
-L_pp_M= [Lk_pp; L_pp_M];
-H_M= [H_k; H_M];
+% Add cells
+H_M_cell= [ {Hk}, H_M_cell];
+L_M_cell= [ {Lk} ,L_M_cell];
+Lpp_M_cell= [ {Lk_pp} ,Lpp_M_cell];
 
-if 0 %~isempty(A_k) % Create A_k^M for the first time (later it will be done recursively)
-    A_k= [L_k, Lk_pp*A_k];
+if 0%~isempty(A_k)% The previous A_(k-1) is an input to the function -> A_k is computed recursively
+    A_k= [Lk, Lk_pp*A_k];
     A_k(:,end-m-n+1:end-m)= [];
-    A_k(:,end-m+1:end)= A_k(:,end-m+1:end) / L_pp_M(end-m+1:end,:);
-    %   A_k= [L_k, Lk_pp * A_k(:,1:n*M), Lk_pp * A_k(:,end-m+1:end) / L_pp_M(end-m+1:end,:)];
+    A_k(:,end-m+1:end)= A_k(:,end-m+1:end) / Lpp_M_cell{end};
     
-else % The previous A_(k-1) is an input to the function -> A_k is computed recursively
+else % Create A_k^M for the first time (later it will be done recursively)
     A_k= inf* ones( m, n_M + m );
-    A_k(: , 1:n)= L_k;
+    A_k(: , 1:n)= Lk;
     for i= 1:M
         if i == 1
-            Dummy_Variable= L_pp_M(1:i*m,:);
+            Dummy_Variable= Lk_pp;
         else
-            Dummy_Variable= Dummy_Variable * L_pp_M( (i-1)*m+1:i*m, : );
+            Dummy_Variable= Dummy_Variable * Lpp_M_cell{i};
         end
-        A_k(:, n*i + 1 : n*(i+1) )= Dummy_Variable * L_M( i*m+1 : (i+1)*m, : );
+        A_k(:, n*i + 1 : n*(i+1) )= Dummy_Variable * L_M_cell{i+1};
     end
-    A_k( :,n_M+1 : end )= Dummy_Variable * L_pp_M( M*m + 1 : (M+1)*m, : );    
+    A_k( :,n_M+1 : end )= Dummy_Variable * Lpp_M_cell{ M + 1 };
 end
 
 % Augmented B
 B_bar= inf* ones( n_M , n_M+m );
 A_prev= Lk_pp \ A_k( : , n + 1:end );
-B_bar(1:n,:)= [eye(n), -H_k*Phi_M(1:m,:)*A_prev];
+B_bar(1:n,:)= [eye(n), -Hk*Phi_M(1:m,:)*A_prev];
 
 % Recursive computation of B
 for i= 1:M
-    A_prev= L_pp_M( i*m+1:i*m + m , :) \ A_prev(:,(n)+1:end);
-    B= [eye(n), -H_M(n*i+1:n*(i+1),:)*Phi_M(m*i+1:m*(i+1),:)*A_prev];
+    A_prev= Lpp_M_cell{i+1} \ A_prev(:,(n)+1:end);
+    B= [eye(n), -H_M_cell{i+1} * Phi_M(m*i+1:m*(i+1),:) * A_prev];
     B_bar(i*n+1:(i+1)*n,1:n*i)= 0;
     B_bar(i*n+1:(i+1)*n, n*i+1:end)= B;
 end
 M_k= B_bar' / Y_M * B_bar;
 
-% Removing the last element (TODO: do not change size)
-H_M= H_M(1:end-(n),:);
-L_M= L_M(1:end-m,:);
-L_pp_M= L_pp_M(1:end-m,:);
+% Using Cells
+H_M_cell(end)= [];
+L_M_cell(end)= [];
+Lpp_M_cell(end)= [];
+
 
 % Detector threshold including the PH
 T_D= chi2inv(1 - PARAMS.C_REQ, n_M);
 
 
 %% Loop over hypotheses in the PH (only 1 fault)
-
 P_HMI= 0;
-for i= 1:nL_M + 1
+for i= 1:n_H
     
     if i == 1 % E matrix for only previous state faults
         E= zeros( m, n_M+m );
