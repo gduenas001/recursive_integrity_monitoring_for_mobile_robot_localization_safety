@@ -7,7 +7,7 @@ global LM PARAMS
 % h.sim= figure('Units', 'pixels','position', [-1919, 1700, 1920, 220]); hold on; 
 h.sim= figure('Units', 'pixels', 'position', [-1919+1919, 1700, 1920, 620]); hold on; 
 xlabel('metres'), ylabel('metres')
-axis([-100, 40, -120, 20]); axis equal
+axis([-40, 50, -40, 15]); axis equal
 
 % Initialize dynamic plots
 h.xt= patch(0,0,'b'); % vehicle true

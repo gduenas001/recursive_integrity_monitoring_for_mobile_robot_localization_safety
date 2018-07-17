@@ -45,7 +45,7 @@ PARAMS.R= [PARAMS.sigmaR^2 0; 0 PARAMS.sigmaB^2];
 
 
 %% Integrity 
-PARAMS.M= 2; % epochs
+PARAMS.M= 3; % epochs
 PARAMS.I_REQ= 1e-5; % Integrity risk requirement
 PARAMS.I_T= 0.001; % set threshold for the local NN
 PARAMS.I_FOV= 1e-9;
@@ -53,7 +53,7 @@ PARAMS.alert_limit= 1;
 PARAMS.T2= chi2inv(1-PARAMS.I_T,PARAMS.m_F); % threshold for the local NN
 PARAMS.P_IA_max= PARAMS.I_FOV*4; % for the landmark selection
 PARAMS.C_REQ= 1e-5; % continuity risk allocation
-PARAMS.P_UA= 10^-3; % assuming that it is constant for the whole landmarks.
+PARAMS.P_H= 1e-3; % assuming that it is constant for the whole landmarks.
 PARAMS.P_ME= 0; % Misdetection probability
 
 
@@ -110,11 +110,10 @@ DATA.lambda2_current= zeros(5000,1);
 %% Initializations of preceding horizon stored matrices
 A_k= []; % Initialize A_k as empty
 
+n_M_array= zeros(1,PARAMS.M);
 n_L= size(LM,2); % Number of landmarks at k
 nL_M= (PARAMS.M+1)*n_L*PARAMS.m_F; % total number of measurement in the PH
 
-gamma_M= ones( nL_M, 1 ) *inf; % Innovation vectors
-Y_M= zeros(nL_M); % Innovation vectors covariances
 Phi_M= ones( (PARAMS.M+1)*PARAMS.m, PARAMS.m ) *inf; % State transition matrices
 
 
@@ -122,5 +121,5 @@ Phi_M= ones( (PARAMS.M+1)*PARAMS.m, PARAMS.m ) *inf; % State transition matrices
 L_M_cell= [];
 Lpp_M_cell= [];
 H_M_cell= [];
-
-
+Y_M= [];
+gamma_M= [];
