@@ -11,7 +11,7 @@ function [z,idf]= get_observations(xtrue)
 
 global LM PARAMS SWITCH
 
-idf= get_visible_landmarks(xtrue,PARAMS.maxRange,SWITCH.ME);
+idf= get_visible_landmarks(xtrue, PARAMS.maxRange, SWITCH.ME);
 
 % Select the visible landmarks
 lm= LM(:,idf);

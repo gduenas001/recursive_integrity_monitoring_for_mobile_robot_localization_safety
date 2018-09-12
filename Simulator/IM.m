@@ -1,5 +1,5 @@
-function [P_HMI, H_M_cell, Y_M, A_k, L_M_cell, Lpp_M_cell]=...
-    IM (Phi_M , H_M_cell, A_k ,Y_M , alpha, L_M_cell, Lpp_M_cell,n_M_array,epoch)
+function [P_HMI, H_M_cell, Y_M, Y_M_cell, A_k, L_M_cell, Lpp_M_cell, n_M_array]=...
+    IM (Phi_M , H_M_cell, A_k ,Y_M , Y_M_cell, alpha, L_M_cell, Lpp_M_cell,n_M_array,epoch)
 
 % PX : states prediction covarience matrix
 % Phi_M : state tranision matrix over the horizon, including the current (concatenated)
@@ -18,9 +18,15 @@ M= PARAMS.M;
 m_F= PARAMS.m_F;
 [lm,n_L]= field_of_view_landmarks();
 nk= n_L*m_F;
-n_M= nk*(M+1); % measurments in the PH
-nL_M= n_L*(M+1);
-n_H=  nL_M + 1; % number of hypotheses
+% TODO
+n_M_array= (-1) * ones(1,M+1);
+n_M_array(1)= nk;
+for i= 1:M
+    n_M_array(i+1)= size(Y_M_cell{i},1);
+end
+n_M= sum(n_M_array);
+nL_M= n_M / m_F; % number of lm in the PH
+n_H=  nL_M + 1; % number of hypotheses (only one lm fault in PH)
 
 % TODO this depends on the miss-association probability
 P_H= PARAMS.P_H;
@@ -40,9 +46,6 @@ end
 V= kron(eye(n_L),PARAMS.R); % current measurements covarience matrix
 Y_k= Hk*PX*Hk' + V; % Current innovations covarience matrix
 
-% Update the innovation vector covarience matrix for the new PH
-Y_M(nk+1:end,nk+1:end)= Y_M(1:end-nk,1:end-nk);
-Y_M(1:nk,1:nk)= Y_k;
 
 
 Lk= PX * Hk' / Y_k;
@@ -53,27 +56,36 @@ Lk_pp= Phi_M(1:m,1:m) - Lk*Hk* Phi_M(1:m,1:m); % Kalman Gain prime-prime
 H_M_cell= [ {Hk}, H_M_cell];
 L_M_cell= [ {Lk} ,L_M_cell];
 Lpp_M_cell= [ {Lk_pp} ,Lpp_M_cell];
+Y_M_cell= [ {Y_k} ,Y_M_cell];
 % Y_M=  [ Y_k, zeros(nk,size(Y_M,1))  ;
 %         zeros(size(Y_M,1),nk), Y_M ];
 
-if ~isempty(A_k) && ~rem(epoch,10)% The previous A_(k-1) is an input to the function -> A_k is computed recursively
-    A_k= [Lk, Lk_pp*A_k];
-    A_k(:,end-m-nk+1:end-m)= [];
-    A_k(:,end-m+1:end)= A_k(:,end-m+1:end) / Lpp_M_cell{end};
-    
-else % Create A_k^M for the first time (later it will be done recursively)
-    A_k= inf* ones( m, n_M + m );
-    A_k(: , 1:nk)= Lk;
-    for i= 1:M
-        if i == 1
-            Dummy_Variable= Lk_pp;
-        else
-            Dummy_Variable= Dummy_Variable * Lpp_M_cell{i};
-        end
-        A_k(:, nk*i + 1 : nk*(i+1) )= Dummy_Variable * L_M_cell{i+1};
-    end
-    A_k( :,n_M+1 : end )= Dummy_Variable * Lpp_M_cell{ M + 1 };
+% Update the innovation vector covarience matrix for the new PH
+Y_M= zeros(n_M,n_M);
+Y_M(1:n_M_array(1) , 1:n_M_array(1))= Y_M_cell{1};
+for i= 1:M
+    n_start= sum( n_M_array(1:i) ) + 1;
+    n_end= sum( n_M_array(1:i+1) );
+    Y_M( n_start: n_end , n_start:n_end )= Y_M_cell{i+1};
+%     Y_M(nk+1:end , nk+1:end)= Y_M(1:end-nk,1:end-nk);
+%     Y_M(1:nk,1:nk)= Y_k;
 end
+
+A_k= Lk;
+% A_k= inf* ones( m, n_M + m );
+% A_k(: , 1:nk)= Lk;
+for i= 1:M
+    if i == 1
+        Dummy_Variable= Lk_pp;
+    else
+        Dummy_Variable= Dummy_Variable * Lpp_M_cell{i};
+    end
+%     A_k(:, nk*i + 1 : nk*(i+1) )= Dummy_Variable * L_M_cell{i+1};
+    A_k= [A_k , Dummy_Variable * L_M_cell{i+1}];
+end
+A_k= [A_k , Dummy_Variable * Lpp_M_cell{M+1}];
+% A_k( :,n_M+1 : end )= Dummy_Variable * Lpp_M_cell{ M + 1 };
+
 
 % Augmented B
 B_bar= inf* ones( n_M , n_M+m );
@@ -82,10 +94,15 @@ B_bar(1:nk,:)= [eye(nk), -Hk*Phi_M(1:m,:)*A_prev];
 
 % Recursive computation of B
 for i= 1:M
-    A_prev= Lpp_M_cell{i+1} \ A_prev(:,(nk)+1:end);
-    B= [eye(nk), -H_M_cell{i+1} * Phi_M(m*i+1:m*(i+1),:) * A_prev];
-    B_bar(i*nk+1:(i+1)*nk,1:nk*i)= 0;
-    B_bar(i*nk+1:(i+1)*nk, nk*i+1:end)= B;
+    A_prev= Lpp_M_cell{i+1} \ A_prev(:, n_M_array(i+1)+1:end);
+    B= [eye(size(H_M_cell{i+1},1)) , -H_M_cell{i+1} * Phi_M(m*i+1:m*(i+1),:) * A_prev];
+    B_bar( sum(n_M_array(1:i))+1 : sum(n_M_array(1:i+1)) , 1 : sum(n_M_array(1:i)) )= 0;
+    B_bar( sum(n_M_array(1:i))+1 : sum(n_M_array(1:i+1)) , sum(n_M_array(1:i))+1 : end)= B;
+
+%     A_prev= Lpp_M_cell{i+1} \ A_prev(:, nk+1:end);
+%     B= [eye(nk), -H_M_cell{i+1} * Phi_M(m*i+1:m*(i+1),:) * A_prev];
+%     B_bar(i*nk+1 : (i+1)*nk , 1 : nk*i)= 0;
+%     B_bar(i*nk+1 : (i+1)*nk , nk*i+1 : end)= B;
 end
 M_k= B_bar' / Y_M * B_bar;
 
@@ -93,6 +110,7 @@ M_k= B_bar' / Y_M * B_bar;
 H_M_cell(end)= [];
 L_M_cell(end)= [];
 Lpp_M_cell(end)= [];
+Y_M_cell(end)= [];
 % Y_M(end-nk-1:end, :)= [];
 % Y_M(:,end-nk-1:end)= [];
 
@@ -159,7 +177,7 @@ H = [-dx/d, -dy/d,  0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [lm,nL]= field_of_view_landmarks ()
+function [lm, nL]= field_of_view_landmarks ()
 
 global XX PX LM PARAMS
 
@@ -169,11 +187,8 @@ global XX PX LM PARAMS
 % EFOV= sqrt(2) * lambda_FOV * sqrt( chi2inv(1 - PARAMS.I_FOV,1) ); % same as previous
 
 % Get all visible landmarks, assuming no mis-extractions here
-%idf= get_visible_landmarks(xx,PARAMS.maxRange+EFV, 0);
+idf= get_visible_landmarks(XX,PARAMS.maxRange, 0);
 
-%lm= LM(:,idf);
-%nL= length(idf);
+lm= LM(:,idf);
+nL= length(idf);
 
-% Assuming that LIDAR range is infinte, and there are no misextractions
-lm= LM;
-nL= size(LM,2);

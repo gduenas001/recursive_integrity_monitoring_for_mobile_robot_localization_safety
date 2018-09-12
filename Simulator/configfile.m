@@ -35,7 +35,8 @@ PARAMS.Q= [PARAMS.sigmaV^2, 0; 0, PARAMS.sigmaG^2];
 
 
 %% Measurements
-PARAMS.maxRange= inf;%25
+PARAMS.maxRange= 25;
+% PARAMS.maxRange= Inf;
 PARAMS.m_F= 2; % d.o.f. of one measurement
 
 % observation noises
@@ -122,4 +123,5 @@ L_M_cell= [];
 Lpp_M_cell= [];
 H_M_cell= [];
 Y_M= [];
+Y_M_cell= [];
 gamma_M= [];

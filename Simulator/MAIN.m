@@ -1,9 +1,9 @@
 dbstop if error
-dbclear if error
+% dbclear if error
 
 clear; close all; configfile;
 
-% h= setup_animations();
+h= setup_animations();
 
 
 % *****************    MAIN LOOP    *****************
@@ -40,7 +40,7 @@ for epoch= 1:PARAMS.numEpochs
         idx= (PARAMS.M-epoch+1)*PARAMS.m+1:(PARAMS.M-epoch+2)*PARAMS.m;
         Phi_M(  idx, :)= Phi_k;
         
-         if length(n_M_array) == PARAMS.M
+        if length(n_M_array) == PARAMS.M
             n_M_array= [nk, n_M_array];
             n_M_array(end)= [];
         end
@@ -55,6 +55,11 @@ for epoch= 1:PARAMS.numEpochs
         end
         
         % Increase preceding horizon -- Using Cells
+        if length(Y_M_cell) == PARAMS.M + 1
+            Y_M_cell(end)= [];
+        end
+        Y_M_cell= [ {Y_k} ,Y_M_cell];
+        
         if length(L_M_cell) == PARAMS.M + 1
             L_M_cell(end)= [];
         end
@@ -71,7 +76,7 @@ for epoch= 1:PARAMS.numEpochs
         H_M_cell= [ {Hk}, H_M_cell];
         
         % Plots
-%         do_plots(xtrue, z, h, epoch);
+        do_plots(xtrue, z, h, epoch);
 
     %% Full-size PH --> start integrity monitoring
     else
@@ -87,8 +92,8 @@ for epoch= 1:PARAMS.numEpochs
         Phi_M(1:PARAMS.m,:)= Phi_k;
         
         % Integrity Monitoring
-        [P_HMI_worst, H_M_cell, Y_M, A_k, L_M_cell, Lpp_M_cell]=...
-            IM (Phi_M , H_M_cell, A_k ,Y_M , alpha, L_M_cell, Lpp_M_cell,n_M_array,epoch);
+        [P_HMI_worst, H_M_cell, Y_M, Y_M_cell, A_k, L_M_cell, Lpp_M_cell, n_M_array]=...
+            IM (Phi_M , H_M_cell, A_k , Y_M, Y_M_cell, alpha, L_M_cell, Lpp_M_cell,n_M_array,epoch);
         
         % Get measurements
         [z,idfTrue]= get_observations(xtrue);
@@ -107,13 +112,13 @@ for epoch= 1:PARAMS.numEpochs
         end
         
         % EKF update
-        [q_D, T_D, gamma_M,n_M_array]= EKF_update(z, idf, epoch,gamma_M,Y_M,n_M_array);
+        [q_D, T_D, gamma_M]= EKF_update(z, idf, epoch,gamma_M,Y_M,n_M_array);
         
         % Store DATA
         store_data(epoch, P_HMI_worst, xtrue, q_D, T_D);
         
         % Plots
-%         do_plots(xtrue, z, h, epoch);
+        do_plots(xtrue, z, h, epoch);
         
     end
 end

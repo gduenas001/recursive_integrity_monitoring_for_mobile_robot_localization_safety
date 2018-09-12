@@ -17,8 +17,8 @@ idf= zeros(1,Nz);
 hlm= cell(n_L,1);
 Hlm= cell(n_L,1);
 
-% % Get all visible landmarks, assuming no mis-extractions here
-% lm_ind= get_visible_landmarks(XX,PARAMS.maxRange+EFOV, 0);
+% Get all visible landmarks, assuming no mis-extractions here
+% lm_ind= get_visible_landmarks(XX,PARAMS.maxRange, 0);
 lm_ind=PARAMS.ftag(1:size(LM,2)); % Assuming infinte range for LIDAR
 
 % Create the nis table
