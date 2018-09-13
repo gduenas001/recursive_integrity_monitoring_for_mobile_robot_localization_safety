@@ -18,8 +18,8 @@ hlm= cell(n_L,1);
 Hlm= cell(n_L,1);
 
 % Get all visible landmarks, assuming no mis-extractions here
-% lm_ind= get_visible_landmarks(XX,PARAMS.maxRange, 0);
-lm_ind=PARAMS.ftag(1:size(LM,2)); % Assuming infinte range for LIDAR
+lm_ind= get_visible_landmarks(XX,PARAMS.maxRange, 0);
+% lm_ind=PARAMS.ftag(1:size(LM,2)); % Assuming infinte range for LIDAR
 
 % Create the nis table
 IIN2_star= ones(1,Nz)*PARAMS.T2;

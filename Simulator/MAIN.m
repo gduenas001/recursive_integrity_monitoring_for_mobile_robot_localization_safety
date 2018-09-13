@@ -40,18 +40,11 @@ for epoch= 1:PARAMS.numEpochs
         idx= (PARAMS.M-epoch+1)*PARAMS.m+1:(PARAMS.M-epoch+2)*PARAMS.m;
         Phi_M(  idx, :)= Phi_k;
         
-        if length(n_M_array) == PARAMS.M
-            n_M_array= [nk, n_M_array];
-            n_M_array(end)= [];
-        end
         
         if ~isempty(gamma_M)
             gamma_M= [gamma_k; gamma_M];
-            Y_M= [ Y_k, zeros(nk,size(Y_M,1))      ;
-                       zeros(size(Y_M,1),nk), Y_M ];
         else
             gamma_M= gamma_k;
-            Y_M= Y_k;
         end
         
         % Increase preceding horizon -- Using Cells
@@ -93,7 +86,7 @@ for epoch= 1:PARAMS.numEpochs
         
         % Integrity Monitoring
         [P_HMI_worst, H_M_cell, Y_M, Y_M_cell, A_k, L_M_cell, Lpp_M_cell, n_M_array]=...
-            IM (Phi_M , H_M_cell, A_k , Y_M, Y_M_cell, alpha, L_M_cell, Lpp_M_cell,n_M_array,epoch);
+            IM (Phi_M , H_M_cell, A_k , Y_M_cell, alpha, L_M_cell, Lpp_M_cell,epoch);
         
         % Get measurements
         [z,idfTrue]= get_observations(xtrue);

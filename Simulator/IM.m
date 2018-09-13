@@ -1,5 +1,5 @@
 function [P_HMI, H_M_cell, Y_M, Y_M_cell, A_k, L_M_cell, Lpp_M_cell, n_M_array]=...
-    IM (Phi_M , H_M_cell, A_k ,Y_M , Y_M_cell, alpha, L_M_cell, Lpp_M_cell,n_M_array,epoch)
+    IM (Phi_M , H_M_cell, A_k , Y_M_cell, alpha, L_M_cell, Lpp_M_cell,epoch)
 
 % PX : states prediction covarience matrix
 % Phi_M : state tranision matrix over the horizon, including the current (concatenated)
@@ -141,9 +141,9 @@ for i= 1:n_H
     M_dir= f_M_dir' * M_k * f_M_dir;
 
     [~, P_HMI_H]= fminbnd( @(f_M_mag)...
-        -((1-cdf('Normal',PARAMS.alert_limit, f_M_mag * fx_hat_dir, sigma2_hat)+...
-        cdf('Normal',-PARAMS.alert_limit,f_M_mag * fx_hat_dir, sigma2_hat))...
-        * cdf('Noncentral Chi-square',T_D,m_F*nL_M, f_M_mag^2 * M_dir )), -10, 10);
+        -((1-cdf('Normal',PARAMS.alert_limit, f_M_mag * fx_hat_dir, sqrt(sigma2_hat))+...
+        cdf('Normal',-PARAMS.alert_limit,f_M_mag * fx_hat_dir, sqrt(sigma2_hat)))...
+        * cdf('Noncentral Chi-square', T_D, m_F*nL_M, f_M_mag^2 * M_dir )), -10, 10);
     P_HMI_H= -P_HMI_H;
     
     % Add P(HMI | H) to the integrity risk
