@@ -1,5 +1,5 @@
 function [P_HMI, H_M_cell, Y_M, Y_M_cell, A_k, L_M_cell, Lpp_M_cell, n_M_array]=...
-    IM (Phi_M , H_M_cell, A_k , Y_M_cell, alpha, L_M_cell, Lpp_M_cell,epoch)
+    IM (xtrue, Phi_M , H_M_cell, A_k , Y_M_cell, alpha, L_M_cell, Lpp_M_cell,epoch)
 
 % PX : states prediction covarience matrix
 % Phi_M : state tranision matrix over the horizon, including the current (concatenated)
@@ -16,7 +16,7 @@ global PX PARAMS
 m= PARAMS.m;
 M= PARAMS.M;
 m_F= PARAMS.m_F;
-[lm,n_L]= field_of_view_landmarks();
+[lm,n_L]= field_of_view_landmarks(xtrue); %%%%%%%%%%%%%%%%%%%%%% CAREFUL xtrue should be there
 nk= n_L*m_F;
 % TODO
 n_M_array= (-1) * ones(1,M+1);
@@ -147,7 +147,11 @@ for i= 1:n_H
     P_HMI_H= -P_HMI_H;
     
     % Add P(HMI | H) to the integrity risk
-    P_HMI= P_HMI + P_HMI_H * P_H;
+    if i == 1
+        P_HMI= P_HMI + P_HMI_H * 1;
+    else
+        P_HMI= P_HMI + P_HMI_H * P_H;
+    end
 end
 
 
@@ -177,9 +181,9 @@ H = [-dx/d, -dy/d,  0;
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-function [lm, nL]= field_of_view_landmarks ()
+function [lm, nL]= field_of_view_landmarks (xtrue)
 
-global XX PX LM PARAMS
+global LM PARAMS
 
 % % calculate how much we need to include in the EFOV
 %lambda_FV= sqrt( max(eig(Px(1:2,1:2))) );
@@ -187,7 +191,7 @@ global XX PX LM PARAMS
 % EFOV= sqrt(2) * lambda_FOV * sqrt( chi2inv(1 - PARAMS.I_FOV,1) ); % same as previous
 
 % Get all visible landmarks, assuming no mis-extractions here
-idf= get_visible_landmarks(XX,PARAMS.maxRange, 0);
+idf= get_visible_landmarks(xtrue,PARAMS.maxRange, 0);
 
 lm= LM(:,idf);
 nL= length(idf);

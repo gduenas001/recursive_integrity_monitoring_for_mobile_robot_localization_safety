@@ -13,7 +13,7 @@ for epoch= 1:PARAMS.numEpochs
     %% Growing PH --> store matrices until full-size
     if epoch <= PARAMS.M + 1
         % Compute controls
-        [G,iwp]= compute_steering(xtrue, iwp, G); G= -deg2rad(3);
+        [G,iwp]= compute_steering(xtrue, iwp, G); %G= -deg2rad(3);
         
         % EKF predict step
         [xtrue,XX,PX,Phi_k,alpha]= predict (xtrue,XX,PX,G); 
@@ -75,7 +75,7 @@ for epoch= 1:PARAMS.numEpochs
     else
         
         % Compute controls
-        [G,iwp]= compute_steering(xtrue, iwp, G); G= -deg2rad(3);
+        [G,iwp]= compute_steering(xtrue, iwp, G); %G= -deg2rad(3);
         
         % EKF predict step
         [xtrue,XX,PX,Phi_k,alpha]= predict (xtrue,XX,PX,G);
@@ -86,7 +86,7 @@ for epoch= 1:PARAMS.numEpochs
         
         % Integrity Monitoring
         [P_HMI_worst, H_M_cell, Y_M, Y_M_cell, A_k, L_M_cell, Lpp_M_cell, n_M_array]=...
-            IM (Phi_M , H_M_cell, A_k , Y_M_cell, alpha, L_M_cell, Lpp_M_cell,epoch);
+            IM (xtrue, Phi_M , H_M_cell, A_k , Y_M_cell, alpha, L_M_cell, Lpp_M_cell,epoch);
         
         % Get measurements
         [z,idfTrue]= get_observations(xtrue);
@@ -94,7 +94,8 @@ for epoch= 1:PARAMS.numEpochs
         
         % Data Association
         if  ~isempty(z)
-            [idf,DATA.numAssoc(epoch)]= data_associate_LNN_LS(z);
+%             [idf,DATA.numAssoc(epoch)]= data_associate_LNN_LS(z);
+            [idf,DATA.numAssoc(epoch)]= data_associate_known(xtrue, z, idfTrue);
             
             % Store associations data
             DATA.IA(epoch)= any( (idfTrue - idf).*idf );

@@ -1,4 +1,4 @@
-function [idft]= data_associate_known(z, idft, EFOV)
+function [idft,Nza]= data_associate_known(xtrue, z, idft)
 %function [zf,idf,zn, table]= data_associate_known(x,z,idz, table)
 
 global XX LM hlm Hlm PARAMS
@@ -13,7 +13,7 @@ hlm= cell(n_L,1);
 Hlm= cell(n_L,1);
 
 % Get all visible landmarks, assuming no mis-extractions here
-lm_ind= get_visible_landmarks(XX,PARAMS.maxRange+EFOV, 0);
+lm_ind= get_visible_landmarks(xtrue,PARAMS.maxRange, 0);
 
 
 for i= 1:Nz
@@ -27,7 +27,7 @@ for i= 1:Nz
     end
 end
 
-
+Nza= length(idft);
 
 
 % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % % 

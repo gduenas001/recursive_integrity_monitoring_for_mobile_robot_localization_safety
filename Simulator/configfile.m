@@ -11,7 +11,7 @@ global XX PX BIAS LM POSES  DATA PARAMS SWITCH IA
 create_path_and_map();
 
 % Number of time epochs to run the simulation
-PARAMS.numEpochs= 100;
+PARAMS.numEpochs= 220;
 
 %% Controls
 PARAMS.dt= 0.1;
@@ -46,9 +46,9 @@ PARAMS.R= [PARAMS.sigmaR^2 0; 0 PARAMS.sigmaB^2];
 
 
 %% Integrity 
-PARAMS.M= 3; % epochs
+PARAMS.M= 6; % epochs
 PARAMS.I_REQ= 1e-5; % Integrity risk requirement
-PARAMS.I_T= 0.001; % set threshold for the local NN
+PARAMS.I_T= 0.0005; % set threshold for the local NN
 PARAMS.I_FOV= 1e-9;
 PARAMS.alert_limit= 1; 
 PARAMS.T2= chi2inv(1-PARAMS.I_T,PARAMS.m_F); % threshold for the local NN
